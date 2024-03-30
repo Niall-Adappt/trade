@@ -2,6 +2,7 @@ import React from 'react';
 import { getPercentageChange } from '@/lib/utils';
 import './style.css';
 import { TickerData } from '@/api';
+import { Link } from 'react-router-dom';
 
 interface TickerCardProps {
   // tickerDetails: TickerDetailsProps | null;
@@ -31,6 +32,7 @@ tickerData
 
   return (
     <div className='ticker-details-box'>
+      <Link to={`/trade/${ticker}`}>
       <img
         className='ticker-logo mx-auto'
         src={logo}
@@ -53,6 +55,7 @@ tickerData
           </div>
         </div>
       )}
+      </Link>
     </div>
   );
 };

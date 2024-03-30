@@ -38,7 +38,7 @@ function App() {
 		<Routes>
 			<Route path="/" element={<HomePage />} />
 			<Route path="/portfolio" element={<PortfolioPage />} />
-			<Route path="/trade" element={<TradePage />}/>
+			<Route path="/trade/:symbol" element={<TradePage />}/>
 		</Routes>
 	  </Suspense>
 
