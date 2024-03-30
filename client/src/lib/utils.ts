@@ -1,3 +1,10 @@
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+ 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
 export const getPercentageChange = (open: number, close: number) => {
     let valueDifference = close - open;
     const isNegative = valueDifference < 0;
