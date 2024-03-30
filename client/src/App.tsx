@@ -1,17 +1,17 @@
-import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-// import HomePage from './pages/HomePage';
+import { Link } from 'react-router-dom';
+
 import HomePage from './pages/homePage';
 import PortfolioPage from './pages/portfolioPage';
-
 import './App.css';
 
 function App() {
-  // const [count, setCount] = useState(0);
 
   return (
     <>
-      {/* Nav bar here */}
+      <nav>
+        <Link to="/">Home</Link> | <Link to="/portfolio">Portfolio</Link>   
+      </nav>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
@@ -21,4 +21,3 @@ function App() {
 }
 
 export default App;
-

@@ -40,3 +40,16 @@
 .read-the-docs {
   color: #888;
 }
+
+.container {
+  padding: 160px 20px 0 20px;
+  text-align: center;
+}
+
+.error {
+  color: red;
+  font-size: 14px;
+  line-height: 16px;
+  text-align: center;
+  margin-bottom: 10px;
+}
