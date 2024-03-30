@@ -8,7 +8,7 @@ import logger from 'morgan';
 import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: './src/config/.env' });
+dotenv.config({ path: './server/config/.env' });
 
 const app = express();
 const corsOptions = {
@@ -36,7 +36,6 @@ const corsOptions = {
     }
   });
 
-  
 const database = async () => {
 //   await mongoose.connect(process.env.MONGO_URI!);
     await connectDB()
