@@ -1,4 +1,4 @@
-function PortfolioPage() {
+const PortfolioPage = () => {
     return (
       <div>
         <h1>Portfolio Page</h1>

@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import SearchInput from '@/components/SearchInput';
 import TickerList from '@/components/TickerList';
 import api, { StockTickerSearchList, TickerData } from '@/api';
-import Loading from '@/components/Loader';
+import { Loader } from '@/components/ui/loader';
 import { WatchList } from '@/components/watchList';
 import TickerCard from '@/components/TickerCard';
 
-function HomePage() {
+const HomePage = () => {
   const [searchValue, setSearchValue] = useState('');
   const [tickersSearchList, setTickersSearchList] = useState<StockTickerSearchList[]>([]);
   const [error, setError] = useState(false);
@@ -73,7 +73,7 @@ function HomePage() {
           Sorry, the data for <b>{searchValue}</b> is not available.
         </div>
       )}
-      {isLoading && <Loading />}
+      {isLoading && <Loader />}
       <TickerList
         handleTickerClick={handleTickerClick}
         allTickers={tickersSearchList}
