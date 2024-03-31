@@ -14,5 +14,41 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-} 
+  id         String        @id @default(uuid()) 
+  username   String        @unique
+  password   String
+  watchlist  String[]
+  ledger     Transaction[]
+  positions  Position[]
+  cash       Float         @default(0)
+}
+
+model Transaction {
+  id       String   @id @default(uuid()) 
+  symbol   String
+  price    Float
+  quantity Int
+  type     TransactionType
+  date     DateTime @default(now())
+  userId   String
+  User     User    @relation(fields: [userId], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  buy
+  sell
+}
+
+model Position {
+  id            String   @id @default(uuid())
+  symbol        String
+  purchasePrice Float
+  purchaseDate  DateTime @default(now())
+  quantity      Int
+  userId        String
+  User          User    @relation(fields: [userId], references: [id])
+
+  @@map("positions")
+}

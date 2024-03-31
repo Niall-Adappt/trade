@@ -1,4 +1,6 @@
 import 'module-alias/register';
+import dotenv from 'dotenv';
+dotenv.config({ path: './server/prisma/.env' });
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import connectDB from './config/database';
@@ -6,9 +8,7 @@ import mainRoutes from './routes/main'; // Update mainRoutes to be exported as d
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
 import path from 'path';
-import dotenv from 'dotenv';
 
-dotenv.config({ path: './server/config/.env' });
 
 const app = express();
 const corsOptions = {
@@ -36,16 +36,25 @@ const corsOptions = {
     }
   });
 
-const database = async () => {
-//   await mongoose.connect(process.env.MONGO_URI!);
-    await connectDB()
-    console.log('MongoDB Connected');
-    try {
-        app.listen(process.env.PORT, () => {
-            console.log(`Server is running on port ${process.env.PORT}, you better catch it!`);
-          });
-    } catch (error) {
-        console.error('Error connecting to DB: ', error);
-    }
-};
-database()
+  try {
+    const PORT = process.env.PORT
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}, you better catch it!`);
+    });
+  } catch (error) {
+    console.error('Error starting server: ', error);
+  }
+
+// const database = async () => {
+// //   await mongoose.connect(process.env.MONGO_URI!);
+//     await connectDB()
+//     console.log('MongoDB Connected');
+//     try {
+//         app.listen(process.env.PORT, () => {
+//             console.log(`Server is running on port ${process.env.PORT}, you better catch it!`);
+//           });
+//     } catch (error) {
+//         console.error('Error connecting to DB: ', error);
+//     }
+// };
+// database()
