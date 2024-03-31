@@ -1,10 +1,13 @@
-const express = require('express')
-const router = express.Router()
+import express from "express";
+const router = express.Router();
 // const authController = require('../controllers/auth') 
 // const homeController = require('../controllers/home')
 // const multer = require('multer');
 // const { ensureAuth } = require('../middleware/ensureAuth');
 // const upload = require("../middleware/multer");
+
+import userController from "../controllers/user";
+import stocksController from "../controllers/stocks";
 
 // router.get('/', homeController.getIndex)
 // router.post('/login', authController.postLogin)
