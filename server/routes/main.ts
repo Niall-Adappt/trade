@@ -1,25 +1,23 @@
 import express from "express";
 const router = express.Router();
-// const authController = require('../controllers/auth') 
-// const homeController = require('../controllers/home')
-// const multer = require('multer');
-// const { ensureAuth } = require('../middleware/ensureAuth');
-// const upload = require("../middleware/multer");
 
+// Importing the controllers
+import stockController from "../controllers/stocks";
 import userController from "../controllers/user";
-import stocksController from "../controllers/stocks";
 
-// router.get('/', homeController.getIndex)
-// router.post('/login', authController.postLogin)
-// router.post('/register', authController.postRegister)
-// router.get('/profile',authController.profileAuth)
-// router.post('/logout', authController.logout)
+// Stock-related routes
+router.get('/stock/info/:symbol', stockController.getInfo);
+router.get('/stock/historical/:symbol', stockController.getHistorical);
+router.post('/stock/buy/:symbol', stockController.buyStock);
+router.post('/stock/sell/:symbol', stockController.sellStock);
+router.get('/search/:query', stockController.search);
 
-// router.post('/submitContactForm', homeController.submitContactForm)
-// router.post('/post',ensureAuth, upload.single("file"), homeController.createPost)
-// router.put('/post', ensureAuth, upload.single("file"), homeController.updatePost)
-// router.get('/post',homeController.getPosts)
-// router.get('/post/:id',homeController.getPost)
-// router.delete('/post/:id',ensureAuth,homeController.deletePost)
+// User-related routes
+router.get('/user/ledger', userController.getLedger);
+router.get('/user/holdings', userController.getHoldings);
+router.get('/user/portfolio', userController.getPortfolio);
+router.get('/user/watchlist', userController.getWatchlist);
+router.post('/user/watchlist/add', userController.addToWatchlist);
+router.post('/user/watchlist/remove', userController.removeFromWatchlist);
 
-export default router
+export default router;
