@@ -25,15 +25,15 @@ export function setupWebSocketServer(httpServer: any) {
     // Function to handle the setup of the Alpaca WebSocket
     function setupAlpacaWebSocket() {
         //initiate Alpaca websocket
-        wssAlpaca = new WebSocket(process.env.APACA_URL) //wss://stream.data.alpaca.markets/v2/test available outside market hrs 'wss://paper-api.alpaca.markets/stream' sip or iex - sip is all exchanges
+        wssAlpaca = new WebSocket(process.env.APCA_URL) //wss://stream.data.alpaca.markets/v2/test available outside market hrs 'wss://paper-api.alpaca.markets/stream' sip or iex - sip is all exchanges
             
         wssAlpaca.on('open', function(){
           console.log('websocket connected: Server - Alpaca');
         
           const authMsg = {
             "action": "auth",
-            "key": process.env.APACA_API_KEY_ID,
-            "secret": process.env.APACA_API_SECRET_KEY,
+            "key": process.env.APCA_API_KEY_ID,
+            "secret": process.env.APCA_API_SECRET_KEY,
           }
           wssAlpaca.send(JSON.stringify(authMsg))
         
