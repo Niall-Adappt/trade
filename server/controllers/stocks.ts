@@ -3,12 +3,14 @@ import { Request, Response } from "express";
 import {
 	fetchStockData,
 	fetchHistoricalStockData,
-	searchStocks,
+    searchAllAssets,
 } from "../utils/requests";
 import prismadb from "../config/prismaClient";
 
 const getInfo = async (req: Request, res: Response) => {
 	const symbol = req.params.symbol;
+    if(!symbol) return res.status(400).send({ message: "No symbol provided" })
+
 	const quote = await fetchStockData(symbol);
 	res.status(200).send(quote);
 };
@@ -25,7 +27,7 @@ const getHistorical = async (req: Request, res: Response) => {
 		| "1y"
 		| "all"
 		| undefined;
-
+    if(!symbol || !period ) return res.status(400).send({ message: "No params provided" })
 	try {
 		const historicalData = await fetchHistoricalStockData(symbol, period);
 
@@ -41,6 +43,8 @@ const buyStock = async (req: Request, res: Response) => {
 	const symbol = req.params.symbol;
 	const quantity = req.body.quantity;
 
+    if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" })
+
 	try {
 		const data = await fetchStockData(symbol);
 		const price = data.regularMarketPrice;
@@ -52,8 +56,6 @@ const buyStock = async (req: Request, res: Response) => {
 		user = user!;
         const id = user.id
         if (!user) return res.status(404).send({ message: "User not found" });
-        if (!symbol) return res.status(404).send({ message: "Ticker not found" });
-        if (!quantity) return res.status(404).send({ message: "Quantity not found" });
 		if (user.cash! < price * quantity) {
 			return res.status(400).send({ message: "Not enough cash" });
 		} else {
@@ -116,6 +118,7 @@ const sellStock = async (req: Request, res: Response) => {
 
 	const symbol = req.params.symbol;
 	var quantity = req.body.quantity;
+    if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" })
 
 	try {
 		const data = await fetchStockData(symbol);
@@ -196,7 +199,7 @@ const search = async (req: Request, res: Response) => {
 
 	if (!query) res.status(400).send({ message: "No query provided" });
 
-	searchStocks(query)
+	searchAllAssets(query!)
 		.then((quotes: any) => {
 			let stocksAndCurrencies = quotes.filter(
 				(quote: { quoteType: string }) => {
