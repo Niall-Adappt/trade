@@ -9,6 +9,7 @@ import { Heading } from "@/components/ui/heading";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Transact } from "@/components/transact";
+import api from "@/api";
 
 const formatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -16,8 +17,9 @@ const formatter = new Intl.NumberFormat("en-US", {
 });
 
 const TradePage = () => {
-    const { symbol } = useParams();
+    let { symbol } = useParams();
 	const location = useLocation();
+    if(!symbol) symbol = 'NVDA'
 
     const [onWatchlist, setOnWatchlist] = useState(false);
 
@@ -31,25 +33,32 @@ const TradePage = () => {
 		},
 	);
 
+    
+
     useEffect(() => {
 		// Check if stock is on watchlist
 		// if (tokens.isAuthenticated()) {
-			accounts.getWatchlist(true).then((res: any[]) => {
-				setOnWatchlist(res.some((stock) => stock.symbol === symbol));
-			});
+			// accounts.getWatchlist(true).then((res: any[]) => {
+			// 	setOnWatchlist(res.some((stock) => stock.symbol === symbol));
+			// });
 		// }
+            
 
-		axios
-			.get(`/api/stocks/${symbol}/info`)
-			.then((res) => {
-				setStock({ ...res.data });
-			})
-			.catch((err) => {
-				console.log(err);
-			});
+        const fetchData = async () => { 
+            try {
+                const tickerInformation = await api.getTickerData(symbol as string);
+                // const tickerInformation = resultArray[0] || null;
+                setStock(tickerInformation);
+            } catch (error) {
+
+                console.error(error);
+            } 
+            };
+        
+            fetchData();
 	}, [location]);
 
-    if(stock.regularMarketPrice < 0){
+    if(stock.price < 0){
         return (
             <div>
                 <Loader/>
@@ -57,21 +66,20 @@ const TradePage = () => {
         )
     }
 
-
     return (
         <>
-            {stock.regularMarketPrice > 0 && (
+            {stock.price > 0 && (
                 <div>
                     <div>
-                        <Heading title={stock.longName} description={formatter.format(stock.regularMarketPrice)}/>
+                        <Heading title={stock.longName} description={formatter.format(stock.price)}/>
                         <div>
-                            <span className={cn(stock.regularMarketChangePercent > 0 ? 'lime-600' : 'red-600')}>
-                                {stock.regularMarketChangePercent > 0 ? (
+                            <span className={cn(stock.changePercent > 0 ? 'lime-600' : 'red-600')}>
+                                {stock.changePercent > 0 ? (
 											<ArrowUpIcon />
 										) : (
 											<ArrowDownIcon />
 										)}
-								{stock.regularMarketChangePercent.toFixed(2)}%
+								{Number(stock.changePercent).toFixed(2)}%
                             </span>
                             <span className="gray-500">
                                 Today
