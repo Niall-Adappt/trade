@@ -3,38 +3,25 @@ import SearchInput from '@/components/SearchInput';
 import TickerList from '@/components/TickerList';
 import api, { StockTickerSearchList, TickerData } from '@/api';
 import { Loader } from '@/components/ui/loader';
-import { WatchList } from '@/components/watchList';
 import TickerCard from '@/components/TickerCard';
+import { WatchList } from '@/components/watchList';
 
 const HomePage = () => {
   const [searchValue, setSearchValue] = useState('');
   const [tickersSearchList, setTickersSearchList] = useState<StockTickerSearchList[]>([]);
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [tickerData, setTickerData] = useState<null | TickerData>(null);
-  
-  // const watchList = ["TSLA", "AAPL", "GOOGL", "AMZN", "MSFT"];
-  const watchList = ["TSLA"];
+  const [tickerSelected, setTickerSelected] = useState('')
 
   const handleTickerClick = async (symbol: string) => {
     if (!symbol) return;
     setTickersSearchList([]);
+    setTickerSelected(symbol)
     setIsLoading(true);
-
-    try {
-        const resultArray = await api.getTickerDataPromise([symbol]);
-        const tickerInfo = resultArray[0] || null;
-        setTickerData(tickerInfo)
-    } catch (error) {
-        setError(true)
-        console.error(error); 
-    } finally {
-        setIsLoading(false)
-    }
-    
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTickerSelected('')
     setError(false);
     setSearchValue(event.target.value.toUpperCase());
     if (!searchValue){
@@ -42,14 +29,13 @@ const HomePage = () => {
       setIsLoading(false)
     }
     setIsLoading(true);
-    setTickerData(null);
   };
 
     useEffect(()=> {
         if(searchValue){
             try {
                 setIsLoading(true)
-                api.getTickerSearchListPromise(searchValue)
+                api.getTickerSearchList(searchValue)
                 .then(results => {
                 setTickersSearchList(results);
                 })
@@ -78,9 +64,9 @@ const HomePage = () => {
         handleTickerClick={handleTickerClick}
         allTickers={tickersSearchList}
       />
-      {tickerData !== null && <TickerCard tickerData={tickerData} />}
+      {tickerSelected !== null && <TickerCard ticker={tickerSelected} setIsLoading={setIsLoading} setError={setError} />}
       <div className='watchList flex'>
-        <WatchList watchList={watchList}/>
+        <WatchList/>
       </div>
       </div>
     );
