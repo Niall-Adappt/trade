@@ -6,10 +6,11 @@ import stockController from "../controllers/stocks";
 import userController from "../controllers/user";
 
 // Stock-related routes
-router.get('/stock/info/:symbol', stockController.getInfo);
+router.get('/stock/data/:symbol', stockController.getStockData);
 router.get('/stock/historical/:symbol', stockController.getHistorical);
 router.post('/stock/buy/:symbol', stockController.buyStock);
 router.post('/stock/sell/:symbol', stockController.sellStock);
+router.get('/searchList/:query', stockController.searchList);
 router.get('/search/:query', stockController.search);
 
 // User-related routes
