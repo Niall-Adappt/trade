@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchStockData } from "../utils/requests";
+import { fetchAlpacaStockData, fetchAlpacaStocksData } from "../utils/requests";
 import prismadb from "../config/prismaClient";
 
 const getLedger = async (req: Request, res: Response) => {
@@ -68,7 +68,9 @@ const getPortfolio = async (req: Request, res: Response) => {
     }
 
     try {
-        const values = await Promise.all(symbols.map((symbol) => fetchStockData(symbol)))
+        // const values = await Promise.all(symbols.map((symbol) => fetchAlpacaStockData(symbol)))
+        const values = await fetchAlpacaStocksData(symbols)
+
         var listOfPositions: any[] = [];
 
         let portfolioValue = 0;
@@ -114,13 +116,15 @@ const getWatchlist = async (req: Request, res: Response) => {
             return res.status(404).send({ message: 'User not found' });
         }
         user = user!;
+
+        return res.status(200).json({ watchlist: user!.watchlist });
     
-        if (req.body.raw === "true") {
-            return res.status(200).json({ watchlist: user!.watchlist });
-        } else {
-            const values = Promise.all(user!.watchlist.map((symbol) => fetchStockData(symbol)))
-            return res.status(200).json({ watchlist: values });
-        }
+        // if (req.query.raw === "true") {
+        //     return res.status(200).json({ watchlist: user!.watchlist });
+        // } else {
+        //     const values = Promise.all(user!.watchlist.map((symbol) => fetchStockData(symbol)))
+        //     return res.status(200).json({ watchlist: values });
+        // }
     } catch (error) {
         console.error('ERROR[getWatchList]: ', error)
         res.status(500).send({ message: error });
