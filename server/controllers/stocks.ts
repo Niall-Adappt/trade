@@ -1,19 +1,48 @@
 import { Request, Response } from "express";
 
 import {
-	fetchStockData,
+	fetchAlpacaStockData,
+    fetchAlpacaStocksData,
 	fetchHistoricalStockData,
-    searchAllAssets,
+    getTickerSearchList,
+    getAllAssets,
+    searchAssets,
+    fetchPolygonStockData,
 } from "../utils/requests";
 import prismadb from "../config/prismaClient";
 
-const getInfo = async (req: Request, res: Response) => {
-	const symbol = req.params.symbol;
-    if(!symbol) return res.status(400).send({ message: "No symbol provided" })
+const getStockData = async (req: Request, res: Response) => {
+    
+    let symbol =req.params.symbol 
+    console.log('stcoks controller getStockData symbol: ', symbol)
+    try {
+      if (!symbol) {
+        return res.status(400).send({ message: "No symbol provided" });
+      }
+      const stockDataAlpaca = await fetchAlpacaStockData(symbol);
+    //   const stockDataPolygon = await fetchPolygonStockData(symbol)
+      
+      const combinedData = {
+        // name: stockDataPolygon.name  || '', // From Polygon
+        // logo: stockDataPolygon.logo || '', // From Polygon
+        // sector: stockDataPolygon.sector || '', // From Polygon
+        symbol: stockDataAlpaca.symbol, // From Alpaca
+        price: stockDataAlpaca.regularMarketPrice, // From Alpaca
+        prevClose: stockDataAlpaca.regularMarketPreviousClose, // From Alpaca
+        prevOpen: stockDataAlpaca.regularMarketPreviousOpen,
+        changePercent: stockDataAlpaca.regularMarketChangePercent
+      };
 
-	const quote = await fetchStockData(symbol);
-	res.status(200).send(quote);
-};
+      res.status(200).send(combinedData);
+
+    } catch (error) {
+        console.log('Error [getStockData]: ', error);
+      return res.status(400).send({ message: "Invalid symbol format" });
+    }
+  
+
+  };
+  
 
 const getHistorical = async (req: Request, res: Response) => {
 
@@ -27,13 +56,14 @@ const getHistorical = async (req: Request, res: Response) => {
 		| "1y"
 		| "all"
 		| undefined;
+
+    console.log('gethistorical period: ', period)
     if(!symbol || !period ) return res.status(400).send({ message: "No params provided" })
 	try {
 		const historicalData = await fetchHistoricalStockData(symbol, period);
-
 		res.status(200).send(historicalData);
 	} catch (error) {
-		console.error("Error fetching " + symbol + "historical stock data:", error);
+		console.error("Error [getHistorical] " + symbol + "historical stock data:", error);
 		res.status(500).send("Error fetching " + symbol + " stock data:" + error);
 	}
 };
@@ -46,7 +76,7 @@ const buyStock = async (req: Request, res: Response) => {
     if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" })
 
 	try {
-		const data = await fetchStockData(symbol);
+		const data = await fetchAlpacaStockData(symbol);
 		const price = data.regularMarketPrice;
 
         let user = await prismadb.user.findUnique({
@@ -121,7 +151,7 @@ const sellStock = async (req: Request, res: Response) => {
     if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" })
 
 	try {
-		const data = await fetchStockData(symbol);
+		const data = await fetchAlpacaStockData(symbol);
 		const price = data.regularMarketPrice;
 
         let user = await prismadb.user.findUnique({
@@ -194,28 +224,53 @@ const sellStock = async (req: Request, res: Response) => {
 };
 
 const search = async (req: Request, res: Response) => {
+    try {
+        const { query } = req.params;
 
-	const { query } = req.params;
+        if (!query) res.status(400).send({ message: "No query provided" });
+    
+        const ticker = await searchAssets(query!)
+    
+        res.status(200).send(ticker);
+    } catch (error) {
+        console.error('Error [search]: ', error)
+        res.status(500).send("Error fetching stock data:" + error);
+    }
 
-	if (!query) res.status(400).send({ message: "No query provided" });
-
-	searchAllAssets(query!)
-		.then((quotes: any) => {
-			let stocksAndCurrencies = quotes.filter(
-				(quote: { quoteType: string }) => {
-					return (
-						quote.quoteType &&
-						quote.quoteType !== "FUTURE" &&
-						quote.quoteType !== "Option"
-					);
-				},
-			);
-			res.status(200).send(stocksAndCurrencies);
-		})
-		.catch((err: any) => {
-			console.log(err);
-			res.status(500).send({ message: err });
-		});
+	// getAllAssets(query!)
+	// 	.then((quotes: any) => {
+	// 		let stocksAndCurrencies = quotes.filter(
+	// 			(quote: { quoteType: string }) => {
+	// 				return (
+	// 					quote.quoteType &&
+	// 					quote.quoteType !== "FUTURE" &&
+	// 					quote.quoteType !== "Option"
+	// 				);
+	// 			},
+	// 		);
+	// 		res.status(200).send(stocksAndCurrencies);
+	// 	})
+	// 	.catch((err: any) => {
+	// 		console.log(err);
+	// 		res.status(500).send({ message: err });
+	// 	});
 };
 
-export default { getInfo, getHistorical, buyStock, sellStock, search };
+const searchList = async (req: Request, res: Response) => {
+    try {
+        const searchValue = req.params.query
+        if (!searchValue) return res.status(400).send({ message: "No query provided" });
+    
+        const allAssets = await getTickerSearchList(searchValue)
+    
+        res.status(200).send(allAssets);
+    } catch (error) {
+        console.error('Error [searchAutoComplete]: ', error)
+        res.status(500).send("Error fetching stock data:" + error);
+    }
+
+};
+
+
+
+export default { getStockData, getHistorical, buyStock, sellStock, search, searchList };
