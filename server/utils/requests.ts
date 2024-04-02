@@ -2,15 +2,45 @@ import { add, sub, formatISO } from 'date-fns'; // Assuming date-fns is used for
 import Cache from "node-cache";
 import axios from "axios";
 const stockCache = new Cache({ stdTTL: 60 }); // 1 minute
+const stockCachePolygon = new Cache({ stdTTL: 3600 }); // 1 hr
 const Alpaca = require("@alpacahq/alpaca-trade-api");
 import dotenv from "dotenv";
 
 dotenv.config();
-const alpaca = new Alpaca() //auto retrieves data from .env to create alpaca client
+const alpaca = new Alpaca({
+  keyId: "PKRBDSJL8TZ35Q4XQG3X" ,
+  secretKey: "JUOGY39DoTXS6X5KaUicMZ4kyhZGy65",
+  paper: true, 
+}) //auto retrieves data from .env to create alpaca client
 
-export const fetchStockData = async (symbol: string): Promise<any> => {
+export const fetchPolygonStockData = async (symbol: string): Promise<any> => {
 	const cacheKey = symbol + "-quote";
-	const alpaca = new Alpaca() //auto retrieves data from .env to create alpaca client
+	const POLYGON_API_KEY = process.env.POLYGON_API_KEY
+
+	try {
+		if (stockCachePolygon.has(cacheKey)) {
+			return stockCachePolygon.get(cacheKey);
+		} else {
+			const companyInfo = await axios(`https://api.polygon.io/v1/meta/symbols/${symbol}/company?&apiKey=${POLYGON_API_KEY}`)
+			const {name, logo, sector } = companyInfo as any
+
+			return  {name, logo, sector}
+		}
+		
+	} catch (error) {
+		console.log("Error [fetchPolygonStockData]: ", error)
+		return null
+	}
+}
+
+export const fetchAlpacaStockData = async (symbol: string): Promise<any> => {
+	const cacheKey = symbol + "-quote"
+
+	const alpaca = new Alpaca({
+		keyId: "PKZQ6SWXJEJAHODG2IAN" ,
+		secretKey: "8ghKj8yOcBEmF7DCnaRdKBsDYNq5NkJsvebVc67a",
+		paper: true, 
+		}) 
 
 	try {
 		if (stockCache.has(cacheKey)) {
@@ -20,6 +50,7 @@ export const fetchStockData = async (symbol: string): Promise<any> => {
 
 			const regularMarketPrice = snapshot.LatestTrade.Price;
 			const regularMarketPreviousClose = snapshot.PrevDailyBar.ClosePrice;
+			const regularMarketPreviousOpen = snapshot.PrevDailyBar.OpenPrice;
 			// Calculate the percentage change from the previous close to the latest price
 			const regularMarketChangePercent = ((regularMarketPrice - regularMarketPreviousClose) / regularMarketPreviousClose) * 100;
 	  
@@ -28,6 +59,7 @@ export const fetchStockData = async (symbol: string): Promise<any> => {
 				// longName: symbol, // fetching from another source if necessary
 				regularMarketPrice,
 				regularMarketPreviousClose,
+				regularMarketPreviousOpen,
 				regularMarketChangePercent: regularMarketChangePercent.toFixed(2), // Formatting to 2 decimal places for consistency
 			  };
 
@@ -35,38 +67,17 @@ export const fetchStockData = async (symbol: string): Promise<any> => {
 			return stockData;
 		}
 	} catch (err: any) {
-		// if (err.result && Array.isArray(err.result)) {
-		// 	let quote = err.result[0];
-
-		// 	const {
-		// 		regularMarketPrice,
-		// 		regularMarketChangePercent,
-		// 		longName,
-		// 		regularMarketPreviousClose,
-		// 	} = quote;
-
-		// 	const stockData = {
-		// 		symbol,
-		// 		// longName,
-		// 		regularMarketPrice,
-		// 		regularMarketPreviousClose,
-		// 		regularMarketChangePercent,
-		// 	};
-
-		// 	stockCache.set(cacheKey, stockData);
-		// 	return stockData;
-		// } else {
-		// 	console.error(err);
-		// 	console.error("Error fetching " + symbol + " stock data:", err);
-		// 	throw new Error(err);
-		// }
 		console.error("Error [fetchStockData] " + symbol + " stock data:", err);
 		throw new Error(err);
 	}
 };
 
-export const fetchStocksData = async (symbols: string[]): Promise<any[]> => {
-	const alpaca = new Alpaca(); // Auto retrieves data from .env to create alpaca client
+export const fetchAlpacaStocksData = async (symbols: string[]): Promise<any[]> => {
+	const alpaca = new Alpaca({
+		keyId: "PKRBDSJL8TZ35Q4XQG3X" ,
+		secretKey: "JUOGY39DoTXS6X5KaUicMZ4kyhZGy65",
+		paper: true, 
+		}); // Auto retrieves data from .env to create alpaca client
 	const results = [];
 	const symbolsToFetch = symbols.filter(symbol => !stockCache.has(symbol + "-quote"));
 
@@ -131,45 +142,72 @@ export const fetchStocksData = async (symbols: string[]): Promise<any[]> => {
 	}
   }
 
-function getStartDate(period: string): string {
-  const today = new Date();
-  switch (period) {
-    case "1d":
-      // Subtract 1 day from today
-      return formatISO(sub(today, { days: 1 }));
-    case "5d":
-      // Subtract 5 days from today
-      return formatISO(sub(today, { days: 5 }));
-    case "1m":
-      // Subtract 1 month from today
-      return formatISO(sub(today, { months: 1 }));
-    case "6m":
-      // Subtract 6 months from today
-      return formatISO(sub(today, { months: 6 }));
-    case "YTD":
-      // Start of the current year
-      return formatISO(new Date(today.getFullYear(), 0, 1));
-    case "1y":
-      // Subtract 1 year from today
-      return formatISO(sub(today, { years: 1 }));
-    case "all":
-      // Assuming 'all' might represent a significant historical period, like 5 years
-      return formatISO(sub(today, { years: 5 }));
-    default:
-      return formatISO(sub(today, { years: 1 }));
+  function getStartEndDates(period: string): { startDate: string, endDate: string } {
+	const today = new Date();
+	const yesterday = new Date(today);
+	yesterday.setDate(yesterday.getDate() - 1);
+	
+	let startDate;
+	
+	switch (period) {
+	  case "1d":
+		// Subtract 1 day from yesterday for the start date
+		startDate = sub(yesterday, { days: 1 });
+		break;
+	  case "5d":
+		// Subtract 5 days from yesterday for the start date
+		startDate = sub(yesterday, { days: 5 });
+		break;
+	  case "1m":
+		// Subtract 1 month from yesterday for the start date
+		startDate = sub(yesterday, { months: 1 });
+		break;
+	  case "6m":
+		// Subtract 6 months from yesterday for the start date
+		startDate = sub(yesterday, { months: 6 });
+		break;
+	  case "YTD":
+		// Start of the current year
+		startDate = new Date(yesterday.getFullYear(), 0, 1);
+		break;
+	  case "1y":
+		// Subtract 1 year from yesterday for the start date
+		startDate = sub(yesterday, { years: 1 });
+		break;
+	  case "all":
+		// Assuming 'all' represents a significant historical period, like 5 years back from yesterday
+		startDate = sub(yesterday, { years: 5 });
+		break;
+	  default:
+		// Default case if none of the above periods are matched
+		startDate = sub(yesterday, { years: 1 });
+	}
+	return {
+	  startDate: formatISO(startDate),
+	  endDate: formatISO(yesterday) // End date is considered as yesterday
+	};
   }
-}
   
   export const fetchHistoricalStockData = async (symbol: string, period: "1d" | "5d" | "1m" | "6m" | "YTD" | "1y" | "all" = "1d"): Promise<any> => {
+	
 	const { timeframe, limit } = getTimeframeAndLimit(period);
 	const cacheKey = `${symbol}-historical-${period}`;
+	const secretKey = process.env.APCA_API_SECRET_KEY
+	const keyId = process.env.APCA_API_KEY_ID
+
+	const alpaca = new Alpaca({
+		keyId: keyId ,
+		secretKey: secretKey,
+		paper: true, 
+	  })
   
 	try {
 	  if (stockCache.has(cacheKey)) {
 		return stockCache.get(cacheKey);
 	  } else {
-		const endDate = new Date(); //current date
-		const startDate = getStartDate(period);
+		// const endDate = new Date(); //current date
+		// const startDate = getStartDate(period);
+		const {startDate, endDate} = getStartEndDates(period)
 
 		const bars = alpaca.getBarsV2(symbol, {
 		  start: startDate, 
@@ -280,9 +318,13 @@ function getStartDate(period: string): string {
 // };
 
 export const searchAssets = async function (searchString: string): Promise<any[]> {
+	const alpaca = new Alpaca({
+		keyId: "PKZQ6SWXJEJAHODG2IAN" ,
+		secretKey: "8ghKj8yOcBEmF7DCnaRdKBsDYNq5NkJsvebVc67a",
+		paper: true, 
+	  }) 
 	try {
-	  // Directly pass searchString to the Alpaca SDK if supported
-	  const assets = await alpaca.getAssets({
+	  const assets = await alpaca.getAsset({
 		asset: searchString,
 	  });
   
@@ -293,13 +335,16 @@ export const searchAssets = async function (searchString: string): Promise<any[]
 	}
   }
 
-export const searchAllAssets = async function (searchString: string): Promise<any[]> {
+export const getAllAssets = async function (searchString?: string): Promise<any[]> {
+	const alpaca = new Alpaca({
+		keyId: "PKZQ6SWXJEJAHODG2IAN" ,
+		secretKey: "8ghKj8yOcBEmF7DCnaRdKBsDYNq5NkJsvebVc67a",
+		paper: true, 
+	  }) 
 	try {
 	  // Fetch all assets that are tradable. You might adjust the status or other filters as needed.
-	  const allAssets = await alpaca.getAssets({
-		status: 'active', // You can filter by asset status
-	  });
-  
+	  const allAssets = await alpaca.getAssets({searchString});
+	  if(!searchString) return allAssets
 	  // Filter assets based on the search string. Adjust the criteria as necessary.
 	  const filteredAssets = allAssets.filter((asset:any) =>
 		asset.symbol.includes(searchString.toUpperCase()) || (asset.name && asset.name.toUpperCase().includes(searchString.toUpperCase()))
@@ -311,3 +356,24 @@ export const searchAllAssets = async function (searchString: string): Promise<an
 	  throw new Error('Failed to search assets');
 	}
   }
+
+  export interface StockTickerSearchList {
+	ticker: string,
+  };
+  
+  export const getTickerSearchList = async (value: string): Promise<StockTickerSearchList[]> => {
+	try {
+	  if (!value) throw new Error("No value provided");
+
+      const url = `https://api.polygon.io/v3/reference/tickers?market=stocks&search=${value}&active=true&sort=ticker&order=asc&limit=10&apiKey=${process.env.POLYGON_API_KEY}`;  
+	
+	  const response = await axios.get(url);
+	  const { results } = response.data;
+  
+	  if (!results?.length) throw new Error("No results found");
+  
+	  return results;
+	} catch (error) {
+	  throw new Error("Failed to fetch stock tickers");
+	}
+  };
