@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Transact } from "@/components/transact";
 import api from "@/api";
+import TickerCard from "@/components/TickerCard";
 
 const formatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -33,8 +34,6 @@ const TradePage = () => {
 		},
 	);
 
-    
-
     useEffect(() => {
 		// Check if stock is on watchlist
 		// if (tokens.isAuthenticated()) {
@@ -43,6 +42,14 @@ const TradePage = () => {
 			// });
 		// }
             
+        const fetchWatchlist = async () => {
+            try {
+                const response = await api.getWatchlist()
+                return response.watchlist
+            } catch (error) {
+                console.error('Error fetching watchlist', error)
+            }
+        }
 
         const fetchData = async () => { 
             try {
@@ -54,7 +61,10 @@ const TradePage = () => {
                 console.error(error);
             } 
             };
-        
+
+            fetchWatchlist().then((list: any) =>{
+                if(list.isArray() && list.includes(symbol)) setOnWatchlist(true)
+            })
             fetchData();
 	}, [location]);
 
@@ -65,27 +75,11 @@ const TradePage = () => {
             </div>
         )
     }
-
     return (
         <>
             {stock.price > 0 && (
                 <div>
-                    <div>
-                        <Heading title={stock.longName} description={formatter.format(stock.price)}/>
-                        <div>
-                            <span className={cn(stock.changePercent > 0 ? 'lime-600' : 'red-600')}>
-                                {stock.changePercent > 0 ? (
-											<ArrowUpIcon />
-										) : (
-											<ArrowDownIcon />
-										)}
-								{Number(stock.changePercent).toFixed(2)}%
-                            </span>
-                            <span className="gray-500">
-                                Today
-                            </span>
-                        </div>
-                    </div>
+                        <div className='font-bold text-xl py-2'>{symbol}</div>
                     <div>
                        {  (onWatchlist ? (
                             <Button
@@ -113,9 +107,14 @@ const TradePage = () => {
                             </Button>
                         ))}
                     </div>
-
+                    <div className="grid grid-cols-5">
+                    <div className="col-span-4">
                         <StockChart symbol={symbol as string} />
-                        <Transact symbol={symbol as string} price={stock.regularMarketPrice}/>
+                    </div>
+                    <div className="col-span-1">
+                        <Transact symbol={symbol as string}/>
+                    </div>
+                    </div>
 
                         {/* insert news feed */}
 
