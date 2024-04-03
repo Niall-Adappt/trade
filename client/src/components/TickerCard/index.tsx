@@ -15,14 +15,14 @@ ticker, setIsLoading, setError
 }) => {
   const [tickerData, setTickerData] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(false);
-  
+  const [wssPrice, setWssPrice] = useState<number | null>(null);
+
+  //fetch data
   useEffect(() => {
     const fetchData = async () => { 
       try {
         setIsLoading?.(true);
-
         const tickerInformation = await api.getTickerData(ticker);
-        // const tickerInformation = resultArray[0] || null;
         setTickerData(tickerInformation);
       } catch (error) {
         setError?.(true);
@@ -31,19 +31,47 @@ ticker, setIsLoading, setError
         setIsLoading?.(false);
       }
     };
-
     fetchData();
+
+    // Define WebSocket connection
+    const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL;
+    const ws = new WebSocket(backendWsUrl);
+
+    ws.onopen = () => {
+      console.log('WebSocket Connected');
+      ws.send(JSON.stringify({ action: 'subscribe', ticker: ticker })); // Subscribe to ticker updates
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      
+      // Assuming the message format is { ticker: string, price: number }
+      if (message.s.toUpperCase() === ticker.toLocaleUpperCase() && ['b', 'd', 'u'].includes(message.T) ) {
+        setWssPrice(message.price); // Update price from WebSocket
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.close(); // Clean up WebSocket connection
+      console.log('WebSocket Disconnected');
+    };
   }, [ticker]);
 
-    useEffect(() => {
-      setIsMounted(true);
-    }, []);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
     if (!isMounted || !tickerData) {
       return null;
     }
+
   // if (!name && !logo && !sector) return null;
   const  { price, changePercent, prevOpen, prevClose } = tickerData
+  const displayPrice  = wssPrice || price
 
   const getPriceColor = () => {
     if (!prevOpen || !prevClose) return;
@@ -69,8 +97,9 @@ ticker, setIsLoading, setError
       {/* <div className='ticker-sector'>{sector}</div> */}
       {prevOpen && prevClose && (
         <div className='price-and-color'>
-          <div className='ticker-price'>{price} USD</div>
-
+          <div className='ticker-price'>
+            {displayPrice} USD
+          </div>
           <div
             className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
             style={getPriceColor()}
