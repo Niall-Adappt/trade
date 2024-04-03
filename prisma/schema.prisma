@@ -16,11 +16,10 @@ datasource db {
 model User {
   id         String        @id @default(uuid()) 
   username   String        @unique
-  password   String
-  watchlist  String[]
-  ledger     Transaction[]
+  watchlist  String[]      @default([])
+  ledger     Transaction[] 
   positions  Position[]
-  cash       Float         @default(0)
+  cash       Float         @default(1000000)
 }
 
 model Transaction {
