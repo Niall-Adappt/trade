@@ -12,9 +12,7 @@ import {
 import prismadb from "../config/prismaClient";
 
 const getStockData = async (req: Request, res: Response) => {
-    
     let symbol =req.params.symbol 
-    console.log('stcoks controller getStockData symbol: ', symbol)
     try {
       if (!symbol) {
         return res.status(400).send({ message: "No symbol provided" });
@@ -137,6 +135,7 @@ const buyStock = async (req: Request, res: Response) => {
                 positionId,
                 },
             });
+            return res.status(200).send({message: 'successful transacation'})
 		}
 	} catch (error) {
 		console.error("Error [buyStock]" + symbol + " stock data:", error);
@@ -145,83 +144,77 @@ const buyStock = async (req: Request, res: Response) => {
 };
 
 const sellStock = async (req: Request, res: Response) => {
+    const symbol = req.params.symbol;
+    const quantity = req.body.quantity;
+    if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" });
 
-	const symbol = req.params.symbol;
-	var quantity = req.body.quantity;
-    if(!symbol || !quantity ) return res.status(400).send({ message: "No params provided" })
-
-	try {
-		const data = await fetchAlpacaStockData(symbol);
-		const price = data.regularMarketPrice;
-
-        let user = await prismadb.user.findUnique({
+    try {
+        const user = await prismadb.user.findUnique({
             where: { id: req.body.userId },
             include: { ledger: true }, 
         });
-		user = user!;
-        const id = user.id
-        if (!user) return res.status(404).send({ message: "User not found" });
-        if (!symbol) return res.status(404).send({ message: "Ticker not found" });
-        if (!quantity) return res.status(404).send({ message: "Quantity not found" });
 
-		// Check if user has enough shares to sell across all positions
+        if (!user) return res.status(404).send({ message: "User not found" });
+
+        const data = await fetchAlpacaStockData(symbol);
+        const price = data.regularMarketPrice;
+
         const existingPosition = await prismadb.position.findUnique({
             where: {
-              userId_symbol: {
-                userId: id,
-                symbol: symbol
-              }
-            }
-          });
-
-        if (!existingPosition) {
-			res.status(400).send({ message: "Position not found" });
-			return;
-		}
-
-        let positionId: string
-        let quantityOwned = existingPosition?.quantity || 0
-
-        if (quantityOwned < quantity) {
-			res.status(400).send({ message: "Not enough shares" });
-			return;
-		}
-
-        const newTotalQuantity = existingPosition.quantity - quantity;
-        const newAveragePurchasePrice = ((existingPosition.avgPurchasePrice * existingPosition.quantity) - (price * quantity)) / newTotalQuantity;
-        
-        const updatedPosition = await prismadb.position.update({
-            where: { id: existingPosition.id },
-            data: {
-            quantity: newTotalQuantity,
-            avgPurchasePrice: newAveragePurchasePrice, // Update the purchasePrice to the new average
+                userId_symbol: {
+                    userId: user.id,
+                    symbol: symbol,
+                },
             },
         });
-        positionId = updatedPosition.id;
+
+        if (!existingPosition) {
+            return res.status(400).send({ message: "Position not found" });
+        }
+
+        const quantityOwned = existingPosition.quantity;
+
+        if (quantityOwned < quantity) {
+            return res.status(400).send({ message: "Not enough shares" });
+        }
+
+        const newTotalQuantity = existingPosition.quantity - quantity;
+        
+        await prismadb.position.update({
+            where: { id: existingPosition.id },
+            data: {
+                quantity: newTotalQuantity,
+                // avgPurchasePrice remains unchanged for sell operation
+            },
+        });
 
         // Create Transaction Record
         await prismadb.transaction.create({
             data: {
-            symbol,
-            price,
-            quantity,
-            type: "buy",
-            userId: id,
-            positionId,
+                symbol,
+                price,
+                quantity,
+                type: "sell",
+                userId: user.id,
+                positionId: existingPosition.id,
             },
         });
 
-		const cashUpdated = user.cash! + price * quantity;
+        // Update user's cash
+        const cashUpdated = user.cash + (price * quantity);
         await prismadb.user.update({
             where: { id: user.id },
             data: { cash: cashUpdated },
-          });
+        });
 
-	} catch (error) {
-		console.error("Error [sellStock] " + symbol + " stock data:", error);
-		res.status(500).send("Error fetching " + symbol + " stock data:" + error);
-	}
+        return res.status(200).send({ message: 'Successful transaction' });
+
+    } catch (error) {
+        console.error(`Error [sellStock] for ${symbol}:`, error);
+        return res.status(500).send(`Error processing transaction for ${symbol}: ${error}`);
+    }
 };
+
 
 const search = async (req: Request, res: Response) => {
     try {
