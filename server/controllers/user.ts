@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { fetchAlpacaStockData, fetchAlpacaStocksData } from "../utils/requests";
 import prismadb from "../config/prismaClient";
+const jwt = require('jsonwebtoken');
 
 const getLedger = async (req: Request, res: Response) => {
     try {
@@ -22,6 +23,7 @@ const getLedger = async (req: Request, res: Response) => {
 
 const getHoldings = async (req: Request, res: Response) => {
     try {
+        console.log('getHoldings triggerd')
         const user = await prismadb.user.findUnique({
             where: { id: req.body.userId },
             include: { positions: true }, 
@@ -117,7 +119,7 @@ const getWatchlist = async (req: Request, res: Response) => {
         }
         user = user!;
 
-        return res.status(200).json({ watchlist: user!.watchlist });
+        return res.status(200).send({ watchlist: user!.watchlist });
     
         // if (req.query.raw === "true") {
         //     return res.status(200).json({ watchlist: user!.watchlist });
@@ -142,19 +144,21 @@ const addToWatchlist = async (req: Request, res: Response) => {
         }
         user = user!;
 
+        const symbol = req.params.symbol
         let watchlist = user.watchlist
+        if(!symbol) return res.status(400).send({message: 'no symbol found'})
 
-        if (!watchlist.includes(req.body.symbol)) {
+        if (!watchlist.includes(symbol)) {
 
-          watchlist.push(req.body.symbol)
+          watchlist.push(symbol)
 
           const updatedUser = await prismadb.user.update({
             where: { id: req.body.userId },
             data: { watchlist },
           });
-          res.status(200).json({ message: "Added to watchlist" });
+          res.status(200).send({ message: "Added to watchlist" });
         } else {
-            res.status(400).json({ message: "Already in watchlist" });
+            res.status(400).send({ message: "Already in watchlist" });
         }
       } catch (error) {
         console.error('ERROR[addToWatchList]: ', error)
@@ -174,12 +178,12 @@ const removeFromWatchlist = async (req: Request, res: Response) => {
               return res.status(404).send({ message: 'User not found' });
           }
           user = user!;
-  
+          const symbol = req.params.symbol
           let watchlist = user.watchlist
+          if(!symbol) return res.status(400).send({message: 'no symbol found'})
+          if (!watchlist.includes(symbol!)) {
   
-          if (!watchlist.includes(req.body.symbol)) {
-  
-            watchlist = watchlist.filter(symbol => symbol !== req.body.symbol)
+            watchlist = watchlist.filter(listSymbol => listSymbol !== symbol)
   
             const updatedUser = await prismadb.user.update({
               where: { id: req.body.userId },
@@ -195,6 +199,36 @@ const removeFromWatchlist = async (req: Request, res: Response) => {
     }
 };
 
+const login = async (req: Request, res: Response) => {
+    const username = req.params.username
+    console.log('username', username)
+    if(!username) return res.status(400).send({message: 'No username provided'})
+    try {
+        let user = await prismadb.user.findUnique({
+          where: {
+            username,
+          },
+        });
+    
+        if (!user) {
+          user = await prismadb.user.create({
+            data: {
+              username,
+            },
+          });
+        }
+        const secret = process.env.JWT_SECRET
+        const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '10h' });
+        res.json({ token });
+      } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).send('An error occurred.');
+      }
+
+}
+
+
+
 export default {
 	getLedger,
 	getHoldings,
@@ -202,4 +236,5 @@ export default {
 	getWatchlist,
 	addToWatchlist,
 	removeFromWatchlist,
+    login
 };
