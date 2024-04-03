@@ -5,6 +5,7 @@ const stockCache = new Cache({ stdTTL: 60 }); // 1 minute
 const stockCachePolygon = new Cache({ stdTTL: 3600 }); // 1 hr
 const Alpaca = require("@alpacahq/alpaca-trade-api");
 import dotenv from "dotenv";
+import prismadb from '../config/prismaClient';
 
 dotenv.config();
 const alpaca = new Alpaca({
@@ -377,3 +378,77 @@ export const getAllAssets = async function (searchString?: string): Promise<any[
 	  throw new Error("Failed to fetch stock tickers");
 	}
   };
+
+  export const botBuyStock = async (symbol: string) => {
+
+	const quantity = 5
+
+    if(!symbol || !quantity ) return { message: "No params provided" }
+
+	try {
+		const data = await fetchAlpacaStockData(symbol);
+		const price = data.regularMarketPrice;
+
+        let user = await prismadb.user.findUnique({
+            where: { id: 'a41b086d-e465-40d5-80a8-ed0bd048f8fe' }, //HARDCODED BOT TO USER ID!!!
+            include: { ledger: true }, 
+        });
+		user = user!;
+        const id = user.id
+        if (!user) return { message: "User not found" };
+		if (user.cash! < price * quantity) {
+			return { message: "Not enough cash" };
+		} else {
+			const cashUpdated = user.cash! - price * quantity;
+            await prismadb.user.update({
+                where: { id: user.id },
+                data: { cash: cashUpdated },
+              });
+  
+            // Update/Create Position
+            let positionId: string;
+
+            const existingPosition = await prismadb.position.findFirst({
+            where: { userId: id, symbol },
+            });
+
+            if (existingPosition) {
+            const newTotalQuantity = existingPosition.quantity + quantity;
+            const newAveragePurchasePrice = ((existingPosition.avgPurchasePrice * existingPosition.quantity) + (price * quantity)) / newTotalQuantity;
+            
+            const updatedPosition = await prismadb.position.update({
+                where: { id: existingPosition.id },
+                data: {
+                quantity: newTotalQuantity,
+                avgPurchasePrice: newAveragePurchasePrice, // Update the purchasePrice to the new average
+                },
+            });
+            positionId = updatedPosition.id;
+            } else {
+            const newPosition = await prismadb.position.create({
+                data: {
+                symbol,
+                avgPurchasePrice: price, 
+                quantity,
+                userId: id,
+                },
+            });
+            positionId = newPosition.id; 
+            }
+            // Create Transaction Record
+            await prismadb.transaction.create({
+                data: {
+                symbol,
+                price,
+                quantity,
+                type: "buy",
+                userId: id,
+                positionId,
+                },
+            });
+            return {message: 'successful transacation'}
+		}
+	} catch (error) {
+		console.error("Error [botBuyStock]" + symbol + " stock data:", error);
+	}
+};
