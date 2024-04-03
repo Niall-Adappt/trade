@@ -52,6 +52,7 @@ const corsOptions = {
     console.error('Error starting server: ', error);
   }
 
+  export default server
 // const database = async () => {
 // //   await mongoose.connect(process.env.MONGO_URI!);
 //     await connectDB()
