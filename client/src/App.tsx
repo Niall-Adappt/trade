@@ -7,6 +7,8 @@ const PortfolioPage = lazy(() => import('@/pages/portfolioPage'))
 const TradePage = lazy(()=> import('@/pages/tradePage'))
 import './App.css';
 import { Loader } from "lucide-react";
+import { Heading } from "./components/ui/heading";
+import SignInPage from "./pages/signInPage";
 
 export type Transaction = {
 	symbol: string;
@@ -31,14 +33,16 @@ function App() {
 
   return (
     <>
-      <nav>
-        <Link to="/">Home</Link> | <Link to="/portfolio">Portfolio</Link> 
+	<Heading title={'$tockker'} description={''}/>
+      <nav className="pt-3">
+        <Link to="/">Home</Link> | <Link to="/portfolio">Portfolio</Link> | <Link to="/signin">Sign in</Link> 
       </nav>
 	  <Suspense fallback={<Loader/>}>
 		<Routes>
 			<Route path="/" element={<HomePage />} />
 			<Route path="/portfolio" element={<PortfolioPage />} />
 			<Route path="/trade/:symbol" element={<TradePage />}/>
+			<Route path="/signin" element={<SignInPage />} />
 		</Routes>
 	  </Suspense>
 
