@@ -1,4 +1,5 @@
-import axios from 'axios';
+// import axios from 'axios';
+import apiInstance from "./apiConfig"; 
 
 export interface TickerData {
   ticker: string,
@@ -18,7 +19,7 @@ const getTickerSearchList = async (value: string) => {
   const url = `${backendUrl}/searchList/${value}`;
 
   try {
-    const response = await axios.get(url);
+    const response = await apiInstance.get(url);
     const results = response.data;
 
     if (!results.length) throw new Error("No results found");
@@ -30,47 +31,13 @@ const getTickerSearchList = async (value: string) => {
   } 
 };
 
-// const getTickerDataPromise = async (symbols: string[]): Promise<(TickerData | null)[]> => {
-//   const promises = symbols.map(async (symbol) => {
-//     if (!symbol) return null;
-
-//     try {
-//       const companyUrl = `https://api.polygon.io/v1/meta/symbols/${symbol}/company?&apiKey=${POLYGON_API_KEY}`;
-//       const prevDayUrl = `https://api.polygon.io/v2/aggs/ticker/${symbol}/prev?unadjusted=true&apiKey=${POLYGON_API_KEY}`;
-
-//       // Execute both requests concurrently for each ticker
-//       const [companyResponse, prevDayResponse] = await Promise.all([
-//         Axios.get(companyUrl),
-//         Axios.get(prevDayUrl)
-//       ]);
-
-//       const companyInfo = companyResponse.data;
-//       const prevDayData = prevDayResponse.data.results[0];
-
-//       if (!prevDayData) return null;
-
-//       return {
-//         ticker: symbol,
-//         tickerInfo: companyInfo,
-//         prevOpen: prevDayData.o,
-//         prevClose: prevDayData.c
-//       };
-//     } catch (error) {
-//       console.error(`Error fetching details for ${symbol}:`, error);
-//       return null; 
-//     }
-//   });
-
-//   // Wait for all promises to resolve
-//   return Promise.all(promises);
-// };
-
 const getTickerData = async (symbol: string): Promise<(any)> => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const url = `${backendUrl}/stock/data/${symbol}`;
-  console.log('getTickerData url: ', url)
+
     try {
-      const response = await axios.get(url);
+      // const response = await axios.get(url);
+      const response = await apiInstance.get(url);
       return response.data
     } catch (error) {
       console.error(`Error fetching ticker data:`, error);
@@ -78,16 +45,21 @@ const getTickerData = async (symbol: string): Promise<(any)> => {
     }
 };
 
-const getWatchlist = async (): Promise<(string | null)[]> => {
+export interface WatchlistResponse {
+  watchlist: string[];
+}
+
+const getWatchlist = async (): Promise<WatchlistResponse> => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const url = `${backendUrl}/user/watchlist`;
 
   try {
-    const response = await axios.get(url)
+    const response = await apiInstance.get(url)
     return response.data;
   } catch (error) {
     console.error('Error fetching watchlist:', error);
-    return [null]
+    throw new Error("Failed to fetch watchlist");
+
   }
 };
 
