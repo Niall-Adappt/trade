@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 
 const HomePage = lazy(() => import('@/pages/homePage')) 
-const PortfolioPage = lazy(() => import('@/pages/portfolioPage')) 
+const PortfolioPage = lazy(() => import('@/pages/portfolio/portfolioPage')) 
 const TradePage = lazy(()=> import('@/pages/tradePage'))
 import './App.css';
 import { Loader } from "lucide-react";
