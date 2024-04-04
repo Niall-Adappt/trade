@@ -1,36 +1,18 @@
 import { Position } from "../App";
 import apiInstance from "./apiConfig";
-// import tokens from "./tokens";
 
-// function makeTransaction(
-// 	symbol: string,
-// 	quantity: number,
-// 	type: "buy" | "sell",
-// ): Promise<string> {
-// 	return apiInstance
-// 		.post("/stocks/" + symbol + "/" + type, {
-// 			quantity,
-// 		})
-// 		.then((res) => {
-// 			return res.data.message;
-// 		})
-// 		.catch((err) => {
-// 			console.log(err.response.data.message);
-// 			throw new Error(err.response.data.message);
-// 		});
-// }
-
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const makeTransaction = async (
 	symbol: string,
 	quantity: number,
 	type: "buy" | "sell",
   ): Promise<string> => {
 	const backendUrl = import.meta.env.VITE_BACKEND_URL;
-	const url = `${backendUrl}/stock/${type}/${symbol}`; // Constructs the URL dynamically based on the type
+	const url = `${backendUrl}/stock/${type}/${symbol}`; 
   
 	try {
 	  const response = await apiInstance.post(url, { quantity });
-	  const message = response.data.message; // Assuming the response includes a message field
+	  const message = response.data.message; 
   
 	  if (!message) {
 		throw new Error("Transaction completed but no message returned");
@@ -58,16 +40,6 @@ function getPositions(): Promise<Position[]> {
 			}
 		});
 }
-
-// function getWatchlist(raw: boolean): Promise<any[]> {
-// 	return apiInstance
-// 		.get("/user/watchlist", {
-// 			data: { raw },
-// 		})
-// 		.then((res) => {
-// 			return res.data.watchlist;
-// 		});
-// }
 
 function editWatchlist(
 	symbol: string,
@@ -152,6 +124,17 @@ const getAvailableShares = async (symbol: string): Promise<number> => {
 	  throw new Error("Failed to fetch available shares");
 	}
   };
+  
+const getTransactions = async (): Promise<any> => {
+	const url = `${backendUrl}/user/transactions`;
+	try {
+		const result = await apiInstance.get(url) 
+		return result
+	} catch (error) {
+		console.error('Error [getTransactions fetch]: ', error)
+		throw new Error('Error [getTransactions fetch]')
+	}
+}
 
 // function signup(
 // 	username: string,
@@ -204,11 +187,11 @@ const getAvailableShares = async (symbol: string): Promise<number> => {
 export default {
 	makeTransaction,
 	getPositions,
-	// getWatchlist,
 	editWatchlist,
 	getPortfolio,
 	getBuyingPower,
 	getAvailableShares,
+	getTransactions
 	// signup,
 	// login,
 };

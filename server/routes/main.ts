@@ -9,7 +9,6 @@ import stockController from "../controllers/stocks";
 import userController from "../controllers/user";
 
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-    console.log('authenticateToken triggered')
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
     if (token == null) return res.status(401).send({message: 'no authorised'});
@@ -17,6 +16,7 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     jwt.verify(token, process.env.JWT_SECRET, (err:any, decoded:any) => {
       if (err) return res.sendStatus(403);
       req.body.userId = decoded.userId;
+      console.log('Authenticated')
       next();
     });
   };
@@ -35,6 +35,7 @@ router.get('/user/ledger', authenticateToken, userController.getLedger);
 router.get('/user/holdings', authenticateToken, userController.getHoldings);
 router.get('/user/portfolio', authenticateToken, userController.getPortfolio);
 router.get('/user/watchlist', authenticateToken, userController.getWatchlist);
+router.get('/user/transactions', authenticateToken, userController.getTransactions);
 router.post('/user/watchlist/add/:symbol', authenticateToken, userController.addToWatchlist);
 router.post('/user/watchlist/remove/:symbol', authenticateToken, userController.removeFromWatchlist);
 

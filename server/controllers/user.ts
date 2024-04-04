@@ -52,7 +52,7 @@ const getPortfolio = async (req: Request, res: Response) => {
 
 	user = user!;
 
-	// Create array of how many of each symbol (no duplicates)
+	// Create array of quantity held for each symbol (no duplicates)
 	let positionsNoDupes: { [key: string]: number } = {};
 	user.positions.forEach((position) => {
 		if (positionsNoDupes[position.symbol]) {
@@ -218,13 +218,49 @@ const login = async (req: Request, res: Response) => {
           });
         }
         const secret = process.env.JWT_SECRET
-        const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '10h' });
+        const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '20d' });
         res.json({ token });
       } catch (error) {
         console.error('Login error:', error);
         res.status(500).send('An error occurred.');
       }
 
+}
+// const getTransactions = async (req: Request, res: Response) => {
+//     const userId = req.body.userId
+//     if(!userId) return res.status(400).send({message: 'No username provided'})
+//     try {
+//         let transactions = await prismadb.transaction.findMany({
+//           where: { userId },
+//         });
+//         console.log(transactions)
+//         res.status(200).send(transactions) 
+//       } catch (error) {
+//         console.error('Login error:', error);
+//         res.status(500).send('An error occurred.');
+//       }
+
+// }
+const getTransactions = async (req: Request, res: Response)  => {
+    const userId = req.body.userId;
+    if (!userId) return res.status(400).send({message: 'No username provided'});
+
+    try {
+        let transactions = await prismadb.transaction.findMany({
+          where: { userId },
+        });
+        
+        // Destructure and return only the necessary fields
+        const filteredTransactions = transactions.map(({ id, symbol, type, quantity, price }) => ({
+          id, symbol, type, quantity, price
+        }));
+
+        console.log(filteredTransactions);
+        res.status(200).send(filteredTransactions); 
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('An error occurred.');
+    }
 }
 
 
@@ -235,6 +271,7 @@ export default {
 	getPortfolio,
 	getWatchlist,
 	addToWatchlist,
+    getTransactions,
 	removeFromWatchlist,
     login
 };
