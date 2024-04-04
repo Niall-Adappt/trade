@@ -1,8 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+
 import { getPercentageChange } from '@/lib/utils';
 import './style.css';
 import api, { TickerData } from '@/api';
-import { Link } from 'react-router-dom';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 interface TickerCardProps {
   ticker: string
@@ -82,37 +91,76 @@ ticker, setIsLoading, setError
   const logo = `https://s3.polygon.io/logos/${ticker.toLowerCase()}/logo.png`
   const isNegative = Number(changePercent) < 0 ? true : false
   const sign = isNegative ? '-' : '+';
-  const absolutDiff = (prevClose - price).toFixed(2)
+  const absolutDiff = (price -prevClose).toFixed(2)
 
   return (
     <div className='ticker-details-box'>
       <Link to={`/trade/${ticker}`}>
-      <img
-        className='ticker-logo mx-auto'
-        src={logo}
-        alt={`stock logo(${ticker})`}
-        width="100"
-      />
-      <div className='ticker-name'>{ticker}</div>
-      {/* <div className='ticker-sector'>{sector}</div> */}
-      {prevOpen && prevClose && (
-        <div className='price-and-color'>
-          <div className='ticker-price'>
-            {displayPrice} USD
-          </div>
-          <div
-            className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
-            style={getPriceColor()}
-          >
-            {
-              `${sign}${absolutDiff} (${changePercent}%)`
-            }
-          </div>
-        </div>
-      )}
+        <Card className='min-w-[200px] min-h-[400px] flex flex-col justify-between border-none shadow-none'>
+          <CardHeader className=''>
+            <div className=''>
+              <img
+                className='ticker-logo mx-auto'
+                src={logo}
+                alt={`stock logo(${ticker})`}
+                width="100"
+                height="100"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className=''>
+          <CardTitle className='pb-6'>{ticker}</CardTitle>
+          {prevOpen && prevClose && (
+            <div className='price-and-color'>
+              <div className='ticker-price'>
+                {displayPrice.toFixed(2)} USD
+              </div>
+              <div
+                className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
+                style={getPriceColor()}
+              >
+                {
+                  `${sign}${absolutDiff} (${changePercent}%)`
+                }
+              </div>
+            </div>
+          )}
+          </CardContent>
+        </Card>
       </Link>
     </div>
   );
 };
 
 export default TickerCard;
+
+
+// return (
+//   <div className='ticker-details-box'>
+//     <Link to={`/trade/${ticker}`}>
+//     <img
+//       className='ticker-logo mx-auto'
+//       src={logo}
+//       alt={`stock logo(${ticker})`}
+//       width="100"
+//     />
+//     <div className='ticker-name'>{ticker}</div>
+//     {/* <div className='ticker-sector'>{sector}</div> */}
+//     {prevOpen && prevClose && (
+//       <div className='price-and-color'>
+//         <div className='ticker-price'>
+//           {displayPrice} USD
+//         </div>
+//         <div
+//           className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
+//           style={getPriceColor()}
+//         >
+//           {
+//             `${sign}${absolutDiff} (${changePercent}%)`
+//           }
+//         </div>
+//       </div>
+//     )}
+//     </Link>
+//   </div>
+// );
