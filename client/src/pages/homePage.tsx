@@ -41,15 +41,16 @@ const HomePage = () => {
                 })
             } catch (error) {
                 console.error(error); 
-            } finally {
-                setIsLoading(false)
             }
+          } else {
+          setTickersSearchList([])
         }
+        setIsLoading(false)
     },[searchValue])  
 
     return (
       <div>
-        <h1>Home Page</h1>
+        <h1 className='py-5'>Home Page</h1>
         <SearchInput
         handleSearchChange={handleSearchChange}
         searchValue={searchValue}
