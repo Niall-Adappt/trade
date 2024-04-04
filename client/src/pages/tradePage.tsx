@@ -63,7 +63,7 @@ const TradePage = () => {
             };
 
             fetchWatchlist().then((list: any) =>{
-                if(list.isArray() && list.includes(symbol)) setOnWatchlist(true)
+                if(Array.isArray(list) && list.includes(symbol)) setOnWatchlist(true)
             })
             fetchData();
 	}, [location]);
