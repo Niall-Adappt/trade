@@ -2,13 +2,13 @@ import 'module-alias/register';
 import dotenv from 'dotenv';
 dotenv.config({ path: './server/prisma/.env' });
 import express, { Application, Request, Response } from 'express';
+import http from 'http';
 import cors from 'cors';
-import connectDB from './config/database';
-import mainRoutes from './routes/main'; // Update mainRoutes to be exported as default or named export
+import mainRoutes from './routes/main';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
 import path from 'path';
-
+import { setupWebSocketServer } from './config/serverSocket';
 
 const app = express();
 const corsOptions = {
@@ -32,29 +32,23 @@ const corsOptions = {
     if (!res.headersSent) {
       res.sendFile(path.join(__dirname, "..", 'client/build', 'index.html'));
     } else {
-      next(); // Pass control to the next middleware or route handler
+      next(); 
     }
   });
+  
+  // HTTP server from the Express app
+  const server = http.createServer(app);
+
+  // Attach WebSocket server to the HTTP server
+  // setupWebSocketServer(server);
 
   try {
     const PORT = process.env.PORT
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}, you better catch it!`);
     });
   } catch (error) {
     console.error('Error starting server: ', error);
   }
 
-// const database = async () => {
-// //   await mongoose.connect(process.env.MONGO_URI!);
-//     await connectDB()
-//     console.log('MongoDB Connected');
-//     try {
-//         app.listen(process.env.PORT, () => {
-//             console.log(`Server is running on port ${process.env.PORT}, you better catch it!`);
-//           });
-//     } catch (error) {
-//         console.error('Error connecting to DB: ', error);
-//     }
-// };
-// database()
+  export default server

@@ -17,17 +17,44 @@ const formatter = new Intl.NumberFormat("en-US", {
 export default function StockChart(props: { symbol: string }) {
 	const location = useLocation();
 	const [isLoading, setIsLoading] = useState(true);
+	const [chartData, setChartData] = useState<any[]>([]);
 
 	// const accentColor =
 	// 	useTheme()["components"]["Link"]["baseStyle"]["color"].split(".")[0];
 	// const chartAccentColor = "var(--chakra-colors-" + accentColor + "-500)";
 
-	const zoomBtnClick = function (this: any) {
+	const fetchStockData = async (period: string = "1m") => {
+		const backendUrl = import.meta.env.VITE_BACKEND_URL;
+		setIsLoading(true);
+		try {
+			const response = await axios(`${backendUrl}/stock/historical/${props.symbol}?period=${period}`);
+			const formattedData = response.data.map((item: any) => {
+				const x = Date.parse(item.Timestamp); // For timestamp
+				const y = item.VWAP;
+				return [x, y];
+			});
+	
+			setChartData(formattedData); // Update chart data state
+			if(chartComponentRef.current && chartComponentRef.current.chart) {
+				const chart = chartComponentRef.current.chart;
+				
+				const xMin = chart.series[0].data[0].x; // x value of the first point in the series
+				const xMax = chart.series[0].data[chart.series[0].data.length - 1].x; // x value of the last point
+			
+				chart.xAxis[0].setExtremes(xMin, xMax, true, false);
+			}
+		} catch (error) {
+			console.error('Error fetching stock data:', error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+	const zoomBtnClick = async function (this: any) {
 		let thisBtn = this as {
 			click: () => void;
 			text: string;
 		};
-		fetchStockData(thisBtn.text);
+		await fetchStockData(thisBtn.text); // Wait for data fetching to complete
 	};
 
 	const [options, setOptions] = useState<Highcharts.Options>({
@@ -137,35 +164,6 @@ export default function StockChart(props: { symbol: string }) {
 		},
 	} as any);
 
-	const fetchStockData = (period: string = "1m") => {
-		setIsLoading(true);
-		axios
-			.get(`/api/stocks/${props.symbol}/historical?period=` + period)
-			.then((res) => {
-				// if (chartComponentRef !== null) {
-				// chartComponentRef.current!.chart!.series[0]!.setData(res.data);
-				// } else {
-				setOptions({
-					...options,
-					series: [
-						{
-							name: "Price",
-							type: "spline",
-							id: "stock_chart",
-
-							data: res.data,
-							lineWidth: 2,
-							tooltip: {
-								valueDecimals: 2,
-							},
-						},
-					],
-				});
-				// }
-				setIsLoading(false);
-			});
-	};
-
 	const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
 
 	highchartsAccessibility(Highcharts);
@@ -175,6 +173,27 @@ export default function StockChart(props: { symbol: string }) {
 	// 	chartComponentRef.current?.chart?.update(options);
 	// 	console.log("updates");
 	// }, [colorMode]);
+
+	
+useEffect(() => {
+    // Update the chart options any time the chartData state changes
+    setOptions((prevOptions) => ({
+        ...prevOptions,
+        series: [
+            {
+                name: "Price",
+                type: "spline",
+                id: "stock_chart",
+                data: chartData, // Use state-managed chart data
+                lineWidth: 2,
+                tooltip: {
+                    valueDecimals: 2,
+                },
+            },
+        ],
+    }));
+	
+}, [chartData]);
 
 	useEffect(() => {
 		fetchStockData();

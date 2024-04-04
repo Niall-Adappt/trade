@@ -1,63 +1,166 @@
-import React from 'react';
-import { getPercentageChange } from '@/lib/utils';
-import './style.css';
-import { TickerData } from '@/api';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { getPercentageChange } from '@/lib/utils';
+import './style.css';
+import api, { TickerData } from '@/api';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
 interface TickerCardProps {
-  // tickerDetails: TickerDetailsProps | null;
-  // changeSinceLastDay: ChangeSinceLastDayProps | null;
-tickerData: TickerData
+  ticker: string
+  setIsLoading?: (value: boolean | ((prevValue: boolean) => boolean)) => void
+  setError?: (value: boolean | ((prevValue: boolean) => boolean)) => void
 }
 
 const TickerCard: React.FC<TickerCardProps> = ({
-tickerData
+ticker, setIsLoading, setError
 }) => {
+  const [tickerData, setTickerData] = useState<any>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [wssPrice, setWssPrice] = useState<number | null>(null);
+
+  //fetch data
+  useEffect(() => {
+    const fetchData = async () => { 
+      try {
+        setIsLoading?.(true);
+        const tickerInformation = await api.getTickerData(ticker);
+        setTickerData(tickerInformation);
+      } catch (error) {
+        setError?.(true);
+        console.error(error);
+      } finally {
+        setIsLoading?.(false);
+      }
+    };
+    fetchData();
+
+    // Define WebSocket connection
+    const backendWsUrl = import.meta.env.VITE_BACKEND_WS_URL;
+    const ws = new WebSocket(backendWsUrl);
+
+    ws.onopen = () => {
+      console.log('WebSocket Connected');
+      ws.send(JSON.stringify({ action: 'subscribe', ticker: ticker })); // Subscribe to ticker updates
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      
+      // Assuming the message format is { ticker: string, price: number }
+      if (message.s.toUpperCase() === ticker.toLocaleUpperCase() && ['b', 'd', 'u'].includes(message.T) ) {
+        setWssPrice(message.price); // Update price from WebSocket
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.close(); // Clean up WebSocket connection
+      console.log('WebSocket Disconnected');
+    };
+  }, [ticker]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+    if (!isMounted || !tickerData) {
+      return null;
+    }
+
   // if (!name && !logo && !sector) return null;
-  if(!tickerData) return null
-  const  {ticker, tickerInfo, prevOpen, prevClose } = tickerData
-  const {name, logo, sector } = tickerInfo as any
+  const  { price, changePercent, prevOpen, prevClose } = tickerData
+  const displayPrice  = wssPrice || price
 
   const getPriceColor = () => {
     if (!prevOpen || !prevClose) return;
-
     const color = isNegative ? 'red' : '#37AD94';
-
     return { color };
   };
 
-  const isNegative = prevOpen && prevClose
-    ? getPercentageChange(prevOpen, prevClose).isNegative
-    : null;
+  const logo = `https://s3.polygon.io/logos/${ticker.toLowerCase()}/logo.png`
+  const isNegative = Number(changePercent) < 0 ? true : false
+  const sign = isNegative ? '-' : '+';
+  const absolutDiff = (price -prevClose).toFixed(2)
 
   return (
     <div className='ticker-details-box'>
       <Link to={`/trade/${ticker}`}>
-      <img
-        className='ticker-logo mx-auto'
-        src={logo}
-        alt={`${name} (${ticker})`}
-        width="100"
-      />
-      <div className='ticker-name'>{name}</div>
-      <div className='ticker-sector'>{sector}</div>
-      {prevOpen && prevClose && (
-        <div className='price-and-color'>
-          <div className='ticker-price'>{prevClose} USD</div>
-          <div
-            className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
-            style={getPriceColor()}
-          >
-            {
-              getPercentageChange(prevOpen, prevClose)
-                .percentage
-            }
-          </div>
-        </div>
-      )}
+        <Card className='min-w-[200px] min-h-[400px] flex flex-col justify-between border-none shadow-none'>
+          <CardHeader className=''>
+            <div className=''>
+              <img
+                className='ticker-logo mx-auto'
+                src={logo}
+                alt={`stock logo(${ticker})`}
+                width="100"
+                height="100"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className=''>
+          <CardTitle className='pb-6'>{ticker}</CardTitle>
+          {prevOpen && prevClose && (
+            <div className='price-and-color'>
+              <div className='ticker-price'>
+                {displayPrice.toFixed(2)} USD
+              </div>
+              <div
+                className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
+                style={getPriceColor()}
+              >
+                {
+                  `${sign}${absolutDiff} (${changePercent}%)`
+                }
+              </div>
+            </div>
+          )}
+          </CardContent>
+        </Card>
       </Link>
     </div>
   );
 };
 
 export default TickerCard;
+
+
+// return (
+//   <div className='ticker-details-box'>
+//     <Link to={`/trade/${ticker}`}>
+//     <img
+//       className='ticker-logo mx-auto'
+//       src={logo}
+//       alt={`stock logo(${ticker})`}
+//       width="100"
+//     />
+//     <div className='ticker-name'>{ticker}</div>
+//     {/* <div className='ticker-sector'>{sector}</div> */}
+//     {prevOpen && prevClose && (
+//       <div className='price-and-color'>
+//         <div className='ticker-price'>
+//           {displayPrice} USD
+//         </div>
+//         <div
+//           className={`ticker-color ticker-${isNegative ? 'down' : 'up'}`}
+//           style={getPriceColor()}
+//         >
+//           {
+//             `${sign}${absolutDiff} (${changePercent}%)`
+//           }
+//         </div>
+//       </div>
+//     )}
+//     </Link>
+//   </div>
+// );

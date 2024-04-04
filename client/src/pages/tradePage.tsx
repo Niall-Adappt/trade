@@ -9,6 +9,8 @@ import { Heading } from "@/components/ui/heading";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Transact } from "@/components/transact";
+import api from "@/api";
+import TickerCard from "@/components/TickerCard";
 
 const formatter = new Intl.NumberFormat("en-US", {
 	style: "currency",
@@ -16,8 +18,9 @@ const formatter = new Intl.NumberFormat("en-US", {
 });
 
 const TradePage = () => {
-    const { symbol } = useParams();
+    let { symbol } = useParams();
 	const location = useLocation();
+    if(!symbol) symbol = 'NVDA'
 
     const [onWatchlist, setOnWatchlist] = useState(false);
 
@@ -34,50 +37,49 @@ const TradePage = () => {
     useEffect(() => {
 		// Check if stock is on watchlist
 		// if (tokens.isAuthenticated()) {
-			accounts.getWatchlist(true).then((res: any[]) => {
-				setOnWatchlist(res.some((stock) => stock.symbol === symbol));
-			});
+			// accounts.getWatchlist(true).then((res: any[]) => {
+			// 	setOnWatchlist(res.some((stock) => stock.symbol === symbol));
+			// });
 		// }
+            
+        const fetchWatchlist = async () => {
+            try {
+                const response = await api.getWatchlist()
+                return response.watchlist
+            } catch (error) {
+                console.error('Error fetching watchlist', error)
+            }
+        }
 
-		axios
-			.get(`/api/stocks/${symbol}/info`)
-			.then((res) => {
-				setStock({ ...res.data });
-			})
-			.catch((err) => {
-				console.log(err);
-			});
+        const fetchData = async () => { 
+            try {
+                const tickerInformation = await api.getTickerData(symbol as string);
+                // const tickerInformation = resultArray[0] || null;
+                setStock(tickerInformation);
+            } catch (error) {
+
+                console.error(error);
+            } 
+            };
+
+            fetchWatchlist().then((list: any) =>{
+                if(Array.isArray(list) && list.includes(symbol)) setOnWatchlist(true)
+            })
+            fetchData();
 	}, [location]);
 
-    if(stock.regularMarketPrice < 0){
+    if(stock.price < 0){
         return (
             <div>
                 <Loader/>
             </div>
         )
     }
-
-
     return (
         <>
-            {stock.regularMarketPrice > 0 && (
+            {stock.price > 0 && (
                 <div>
-                    <div>
-                        <Heading title={stock.longName} description={formatter.format(stock.regularMarketPrice)}/>
-                        <div>
-                            <span className={cn(stock.regularMarketChangePercent > 0 ? 'lime-600' : 'red-600')}>
-                                {stock.regularMarketChangePercent > 0 ? (
-											<ArrowUpIcon />
-										) : (
-											<ArrowDownIcon />
-										)}
-								{stock.regularMarketChangePercent.toFixed(2)}%
-                            </span>
-                            <span className="gray-500">
-                                Today
-                            </span>
-                        </div>
-                    </div>
+                        <div className='font-bold text-xl py-2'>{symbol}</div>
                     <div>
                        {  (onWatchlist ? (
                             <Button
@@ -105,9 +107,14 @@ const TradePage = () => {
                             </Button>
                         ))}
                     </div>
-
+                    <div className="grid grid-cols-5">
+                    <div className="col-span-4">
                         <StockChart symbol={symbol as string} />
-                        <Transact symbol={symbol as string} price={stock.regularMarketPrice}/>
+                    </div>
+                    <div className="col-span-1">
+                        <Transact symbol={symbol as string}/>
+                    </div>
+                    </div>
 
                         {/* insert news feed */}
 

@@ -1,25 +1,42 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
+const jwt = require('jsonwebtoken');
+
+
 const router = express.Router();
-// const authController = require('../controllers/auth') 
-// const homeController = require('../controllers/home')
-// const multer = require('multer');
-// const { ensureAuth } = require('../middleware/ensureAuth');
-// const upload = require("../middleware/multer");
 
+// Importing the controllers
+import stockController from "../controllers/stocks";
 import userController from "../controllers/user";
-import stocksController from "../controllers/stocks";
 
-// router.get('/', homeController.getIndex)
-// router.post('/login', authController.postLogin)
-// router.post('/register', authController.postRegister)
-// router.get('/profile',authController.profileAuth)
-// router.post('/logout', authController.logout)
+const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    if (token == null) return res.status(401).send({message: 'no authorised'});
+  
+    jwt.verify(token, process.env.JWT_SECRET, (err:any, decoded:any) => {
+      if (err) return res.sendStatus(403);
+      req.body.userId = decoded.userId;
+      console.log('Authenticated')
+      next();
+    });
+  };
 
-// router.post('/submitContactForm', homeController.submitContactForm)
-// router.post('/post',ensureAuth, upload.single("file"), homeController.createPost)
-// router.put('/post', ensureAuth, upload.single("file"), homeController.updatePost)
-// router.get('/post',homeController.getPosts)
-// router.get('/post/:id',homeController.getPost)
-// router.delete('/post/:id',ensureAuth,homeController.deletePost)
+// Stock-related routes
+router.get('/stock/data/:symbol',stockController.getStockData);
+router.get('/stock/historical/:symbol', stockController.getHistorical);
+router.post('/stock/buy/:symbol',authenticateToken, stockController.buyStock);
+router.post('/stock/sell/:symbol', authenticateToken, stockController.sellStock);
+router.get('/searchList/:query', stockController.searchList);
+router.get('/search/:query', stockController.search);
 
-export default router
+// User-related routes
+router.post('/user/login/:username', userController.login);
+router.get('/user/ledger', authenticateToken, userController.getLedger);
+router.get('/user/holdings', authenticateToken, userController.getHoldings);
+router.get('/user/portfolio', authenticateToken, userController.getPortfolio);
+router.get('/user/watchlist', authenticateToken, userController.getWatchlist);
+router.get('/user/transactions', authenticateToken, userController.getTransactions);
+router.post('/user/watchlist/add/:symbol', authenticateToken, userController.addToWatchlist);
+router.post('/user/watchlist/remove/:symbol', authenticateToken, userController.removeFromWatchlist);
+
+export default router;

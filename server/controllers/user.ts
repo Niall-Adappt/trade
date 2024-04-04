@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { fetchStockData } from "../utils/requests";
+import { fetchAlpacaStockData, fetchAlpacaStocksData } from "../utils/requests";
 import prismadb from "../config/prismaClient";
+const jwt = require('jsonwebtoken');
 
 const getLedger = async (req: Request, res: Response) => {
     try {
@@ -22,6 +23,7 @@ const getLedger = async (req: Request, res: Response) => {
 
 const getHoldings = async (req: Request, res: Response) => {
     try {
+        console.log('getHoldings triggerd')
         const user = await prismadb.user.findUnique({
             where: { id: req.body.userId },
             include: { positions: true }, 
@@ -50,7 +52,7 @@ const getPortfolio = async (req: Request, res: Response) => {
 
 	user = user!;
 
-	// Create array of how many of each symbol (no duplicates)
+	// Create array of quantity held for each symbol (no duplicates)
 	let positionsNoDupes: { [key: string]: number } = {};
 	user.positions.forEach((position) => {
 		if (positionsNoDupes[position.symbol]) {
@@ -68,7 +70,9 @@ const getPortfolio = async (req: Request, res: Response) => {
     }
 
     try {
-        const values = await Promise.all(symbols.map((symbol) => fetchStockData(symbol)))
+        // const values = await Promise.all(symbols.map((symbol) => fetchAlpacaStockData(symbol)))
+        const values = await fetchAlpacaStocksData(symbols)
+
         var listOfPositions: any[] = [];
 
         let portfolioValue = 0;
@@ -114,13 +118,15 @@ const getWatchlist = async (req: Request, res: Response) => {
             return res.status(404).send({ message: 'User not found' });
         }
         user = user!;
+
+        return res.status(200).send({ watchlist: user!.watchlist });
     
-        if (req.body.raw === "true") {
-            return res.status(200).json({ watchlist: user!.watchlist });
-        } else {
-            const values = Promise.all(user!.watchlist.map((symbol) => fetchStockData(symbol)))
-            return res.status(200).json({ watchlist: values });
-        }
+        // if (req.query.raw === "true") {
+        //     return res.status(200).json({ watchlist: user!.watchlist });
+        // } else {
+        //     const values = Promise.all(user!.watchlist.map((symbol) => fetchStockData(symbol)))
+        //     return res.status(200).json({ watchlist: values });
+        // }
     } catch (error) {
         console.error('ERROR[getWatchList]: ', error)
         res.status(500).send({ message: error });
@@ -138,19 +144,21 @@ const addToWatchlist = async (req: Request, res: Response) => {
         }
         user = user!;
 
+        const symbol = req.params.symbol
         let watchlist = user.watchlist
+        if(!symbol) return res.status(400).send({message: 'no symbol found'})
 
-        if (!watchlist.includes(req.body.symbol)) {
+        if (!watchlist.includes(symbol)) {
 
-          watchlist.push(req.body.symbol)
+          watchlist.push(symbol)
 
           const updatedUser = await prismadb.user.update({
             where: { id: req.body.userId },
             data: { watchlist },
           });
-          res.status(200).json({ message: "Added to watchlist" });
+          res.status(200).send({ message: "Added to watchlist" });
         } else {
-            res.status(400).json({ message: "Already in watchlist" });
+            res.status(400).send({ message: "Already in watchlist" });
         }
       } catch (error) {
         console.error('ERROR[addToWatchList]: ', error)
@@ -170,12 +178,12 @@ const removeFromWatchlist = async (req: Request, res: Response) => {
               return res.status(404).send({ message: 'User not found' });
           }
           user = user!;
-  
+          const symbol = req.params.symbol
           let watchlist = user.watchlist
+          if(!symbol) return res.status(400).send({message: 'no symbol found'})
+          if (!watchlist.includes(symbol!)) {
   
-          if (!watchlist.includes(req.body.symbol)) {
-  
-            watchlist = watchlist.filter(symbol => symbol !== req.body.symbol)
+            watchlist = watchlist.filter(listSymbol => listSymbol !== symbol)
   
             const updatedUser = await prismadb.user.update({
               where: { id: req.body.userId },
@@ -191,11 +199,79 @@ const removeFromWatchlist = async (req: Request, res: Response) => {
     }
 };
 
+const login = async (req: Request, res: Response) => {
+    const username = req.params.username
+    console.log('username', username)
+    if(!username) return res.status(400).send({message: 'No username provided'})
+    try {
+        let user = await prismadb.user.findUnique({
+          where: {
+            username,
+          },
+        });
+    
+        if (!user) {
+          user = await prismadb.user.create({
+            data: {
+              username,
+            },
+          });
+        }
+        const secret = process.env.JWT_SECRET
+        const token = jwt.sign({ userId: user.id }, secret, { expiresIn: '20d' });
+        res.json({ token });
+      } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).send('An error occurred.');
+      }
+
+}
+// const getTransactions = async (req: Request, res: Response) => {
+//     const userId = req.body.userId
+//     if(!userId) return res.status(400).send({message: 'No username provided'})
+//     try {
+//         let transactions = await prismadb.transaction.findMany({
+//           where: { userId },
+//         });
+//         console.log(transactions)
+//         res.status(200).send(transactions) 
+//       } catch (error) {
+//         console.error('Login error:', error);
+//         res.status(500).send('An error occurred.');
+//       }
+
+// }
+const getTransactions = async (req: Request, res: Response)  => {
+    const userId = req.body.userId;
+    if (!userId) return res.status(400).send({message: 'No username provided'});
+
+    try {
+        let transactions = await prismadb.transaction.findMany({
+          where: { userId },
+        });
+        
+        // Destructure and return only the necessary fields
+        const filteredTransactions = transactions.map(({ id, symbol, type, quantity, price }) => ({
+          id, symbol, type, quantity, price
+        }));
+
+        console.log(filteredTransactions);
+        res.status(200).send(filteredTransactions); 
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('An error occurred.');
+    }
+}
+
+
+
 export default {
 	getLedger,
 	getHoldings,
 	getPortfolio,
 	getWatchlist,
 	addToWatchlist,
+    getTransactions,
 	removeFromWatchlist,
+    login
 };

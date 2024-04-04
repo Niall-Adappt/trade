@@ -1,27 +1,32 @@
 import { Position } from "../App";
-import api from "./apiConfig";
-// import tokens from "./tokens";
+import apiInstance from "./apiConfig";
 
-function makeTransaction(
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const makeTransaction = async (
 	symbol: string,
 	quantity: number,
 	type: "buy" | "sell",
-): Promise<string> {
-	return api
-		.post("/stocks/" + symbol + "/" + type, {
-			quantity,
-		})
-		.then((res) => {
-			return res.data.message;
-		})
-		.catch((err) => {
-			console.log(err.response.data.message);
-			throw new Error(err.response.data.message);
-		});
-}
+  ): Promise<string> => {
+	const backendUrl = import.meta.env.VITE_BACKEND_URL;
+	const url = `${backendUrl}/stock/${type}/${symbol}`; 
+  
+	try {
+	  const response = await apiInstance.post(url, { quantity });
+	  const message = response.data.message; 
+  
+	  if (!message) {
+		throw new Error("Transaction completed but no message returned");
+	  }
+  
+	  return message;
+	} catch (error) {
+	  console.error(`Error making transaction (${type}) for ${symbol}:`, error);
+	  throw new Error("Failed to complete transaction");
+	}
+  };
 
 function getPositions(): Promise<Position[]> {
-	return api
+	return apiInstance
 		.get("/user/holdings")
 		.then((res) => {
 			return res.data.positions;
@@ -36,22 +41,14 @@ function getPositions(): Promise<Position[]> {
 		});
 }
 
-function getWatchlist(raw: boolean): Promise<any[]> {
-	return api
-		.get("/user/watchlist", {
-			data: { raw },
-		})
-		.then((res) => {
-			return res.data.watchlist;
-		});
-}
-
 function editWatchlist(
 	symbol: string,
 	operation: "add" | "remove",
 ): Promise<string> {
-	return api
-		.post("/user/watchlist/" + operation + "/" + symbol, {})
+	const backendUrl = import.meta.env.VITE_BACKEND_URL;
+	const url = `${backendUrl}/user/watchlist/${operation}/${symbol}`
+	return apiInstance
+		.post(url)
 		.then((res) => {
 			return res.data.message;
 		})
@@ -70,7 +67,7 @@ function getPortfolio(): Promise<{
 	positions: Position[];
 	cash: number;
 }> {
-	return api.get("/user/portfolio").then((res) => {
+	return apiInstance.get("/user/portfolio").then((res) => {
 		return {
 			portfolioValue: res.data.portfolioValue,
 			portfolioPrevCloseValue: res.data.portfolioPrevCloseValue,
@@ -79,42 +76,64 @@ function getPortfolio(): Promise<{
 		};
 	});
 }
+  
+  const getBuyingPower = async (): Promise<number> => {
+	const backendUrl = import.meta.env.VITE_BACKEND_URL;
+	const url = `${backendUrl}/user/holdings`;
+  
+	try {
+	  const response = await apiInstance.get(url);
+	  const { cash } = response.data;
+  
+	  if (cash === undefined) {
+		throw new Error("Incomplete data returned");
+	  }
+  
+	  return cash ;
+	} catch (error) {
+	  console.error('Error fetching buying power and positions:', error);
+	  throw new Error("Failed to fetch buying power and positions");
+	} 
+  };
 
-function getBuyingPower(): Promise<number> {
-	return api
-		.get("/user/holdings")
-		.then((res) => {
-			return res.data.cash;
-		})
-		.catch((err) => {
-			if (err.response) {
-				throw new Error(err.response.data.message);
-			} else {
-				throw new Error(err as string);
-			}
-		});
-}
+const getAvailableShares = async (symbol: string): Promise<number> => {
+	const backendUrl = import.meta.env.VITE_BACKEND_URL;
+	const url = `${backendUrl}/user/holdings`;
+  
+	try {
+	  const response = await apiInstance.get(url);
+	  const { positions } = response.data;
+  
+	  if (!Array.isArray(positions)) {
+		throw new Error("Positions data is not an array");
+	  }
 
-function getAvailableShares(symbol: string): Promise<number> {
-	return api
-		.get("/user/holdings")
-		.then((res) => {
-			let positions = res.data.positions;
-			// Sum up all the shares of the given symbol
-			return positions.reduce((sum: number, stock: Position) => {
-				if (stock.symbol === symbol) {
-					return sum + stock.quantity;
-				}
-				return sum;
-			}, 0);
-		})
-		.catch((err) => {
-			if (err.response) {
-				throw new Error(err.response.data.message);
-			} else {
-				throw new Error(err as string);
-			}
-		});
+	  if(positions && positions.length === 0 ) return 0
+  
+	  // Sum up all the shares of the given symbol
+	  const totalShares = positions.reduce((sum: number, position: Position) => {
+		if (position.symbol.toUpperCase() === symbol.toUpperCase()) {
+		  return sum + position.quantity;
+		}
+		return sum;
+	  }, 0);
+  
+	  return totalShares;
+	} catch (error) {
+	  console.error('Error fetching available shares:', error);
+	  throw new Error("Failed to fetch available shares");
+	}
+  };
+  
+const getTransactions = async (): Promise<any> => {
+	const url = `${backendUrl}/user/transactions`;
+	try {
+		const result = await apiInstance.get(url) 
+		return result
+	} catch (error) {
+		console.error('Error [getTransactions fetch]: ', error)
+		throw new Error('Error [getTransactions fetch]')
+	}
 }
 
 // function signup(
@@ -122,7 +141,7 @@ function getAvailableShares(symbol: string): Promise<number> {
 // 	password: string,
 // 	turnstileToken: string,
 // ): Promise<string> {
-// 	return api
+// 	return apiInstance
 // 		.post("/auth/signup", {
 // 			username,
 // 			password,
@@ -141,7 +160,7 @@ function getAvailableShares(symbol: string): Promise<number> {
 // 	password: string,
 // 	turnstileToken: string,
 // ): Promise<string> {
-// 	return api
+// 	return apiInstance
 // 		.post("/auth/login", {
 // 			username,
 // 			password,
@@ -168,11 +187,11 @@ function getAvailableShares(symbol: string): Promise<number> {
 export default {
 	makeTransaction,
 	getPositions,
-	getWatchlist,
 	editWatchlist,
 	getPortfolio,
 	getBuyingPower,
 	getAvailableShares,
+	getTransactions
 	// signup,
 	// login,
 };
