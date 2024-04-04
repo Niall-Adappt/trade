@@ -184,21 +184,21 @@ export const Transact: React.FC<TransactProps> = ({symbol}) => {
               <CardContent className="space-y-2">
                 <div className="space-y-1">
                   <Label htmlFor="shares">Shares</Label>
-                  <Input id="shares" type="number" defaultValue={1} onChange={(e) => setShares(parseInt(e.target.value))}/>
+                  <Input key={location.pathname} id="shares" type="number" defaultValue={1} onChange={(e) => setShares(parseInt(e.target.value))}/>
+                </div>
+                <div className="space-y-1 pt-3">
+                    <span>Current price: </span>
+                    <span className="text-xl font-bold">{formatter.format(displayPrice)}</span>
                 </div>
                 <div className="space-y-1">
-                    <span>Current price</span>
-                    <span>{formatter.format(displayPrice)}</span>
-                </div>
-                <div className="space-y-1">
-                    <span>Estimated total</span>
-                    <span>{formatter.format(displayPrice*shares)}</span>
+                    <span>Estimated total: </span>
+                    <span className="text-xl font-bold">{formatter.format(displayPrice*shares)}</span>
                 </div>
               </CardContent>
               <CardFooter>
                 <div className="flex flex-col mx-auto w-full">
                   <Button disabled={isLoading} onClick={() => submitTransaction(symbol, shares, true)}>Buy</Button>
-                  <span>Available funds: {formatter.format(buyingPower)}</span>
+                  <span className="pt-5">Available funds: {formatter.format(buyingPower)}</span>
                 </div>
               </CardFooter>
             </Card>
@@ -222,19 +222,19 @@ export const Transact: React.FC<TransactProps> = ({symbol}) => {
                   <Label htmlFor="shares">Shares</Label>
                   <Input id="shares" type="number" defaultValue={1} onChange={(e) => setShares(parseInt(e.target.value))}/>
                 </div>
-                <div className="space-y-1">
-                    <span>Current price</span>
-                    <span>{formatter.format(displayPrice)}</span>
+                <div className="space-y-2 pt-3">
+                    <span>Current price: </span>
+                    <span className="text-xl font-bold">{formatter.format(displayPrice)}</span>
                 </div>
                 <div className="space-y-1">
-                    <span>Estimated total</span>
-                    <span>{formatter.format(displayPrice*shares)}</span>
+                    <span>Estimated total: </span>
+                    <span className="text-xl font-bold">{formatter.format(displayPrice*shares)}</span>
                 </div>
               </CardContent>
               <CardFooter>
                 <div className="flex flex-col mx-auto w-full">
                   <Button disabled={isLoading} onClick={() => submitTransaction(symbol, shares, false)}>Sell</Button>
-                  <span>{availableShares} shares available</span>
+                  <span className="pt-5">{availableShares} shares available</span>
                 </div>
               </CardFooter>
             </Card>
