@@ -43,7 +43,6 @@ export default function StockChart(props: { symbol: string }) {
 			
 				chart.xAxis[0].setExtremes(xMin, xMax, true, false);
 			}
-			console.log(period, 'formattedData: ', formattedData);
 		} catch (error) {
 			console.error('Error fetching stock data:', error);
 		} finally {
